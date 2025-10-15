@@ -3,76 +3,90 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Local Vibe</title>
-    <!-- This imports the Tailwind CSS library for styling -->
+    <title>Local Vibe - Surat</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        /* A simple animation for the loading state */
-        @keyframes pulse {
-            50% { opacity: .5; }
-        }
-        .animate-pulse {
-            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 </head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen font-sans">
+<body class="bg-gray-100 font-sans">
 
-    <div class="w-full max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden md:max-w-2xl m-4">
-        <div class="p-8">
-            <div class="uppercase tracking-wide text-sm text-indigo-500 font-semibold">Welcome to</div>
-            <h1 class="block mt-1 text-3xl leading-tight font-bold text-black">Local Vibe</h1>
-            <p class="mt-2 text-gray-500">A place for spontaneous, local skill-sharing.</p>
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-indigo-600">Local Vibe</h1>
+            <p class="text-gray-600 mt-2">Discover and join spontaneous skill-sharing workshops in Surat!</p>
+        </header>
 
-            <div id="api-status-card" class="mt-6 p-4 border rounded-lg bg-gray-50">
-                <p class="text-gray-700 font-medium">Status of our API Server:</p>
-                <!-- This is where the message from your server will appear -->
-                <p id="api-message" class="text-lg font-semibold text-gray-900 mt-2 italic animate-pulse">
-                    Connecting to the server...
-                </p>
-            </div>
-        </div>
+        <main id="workshops-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <p id="loading-message" class="text-gray-500 italic col-span-full text-center">Loading awesome workshops near you...</p>
+        </main>
     </div>
 
+    <template id="workshop-card-template">
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden transform hover:scale-105 transition-transform duration-300">
+            <div class="p-6">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <div class="uppercase tracking-wide text-sm text-indigo-500 font-semibold" data-title></div>
+                        <p class="mt-1 text-gray-500 text-sm" data-location></p>
+                    </div>
+                    <div class="text-right">
+                       <p class="text-xl font-bold text-gray-900" data-price></p>
+                       <p class="text-xs text-gray-500">per person</p>
+                    </div>
+                </div>
+                <p class="mt-4 text-gray-700" data-description></p>
+                <div class="mt-4 flex justify-between items-center text-sm text-gray-600">
+                    <div class="flex items-center">
+                        <i class="fas fa-user-circle mr-2 text-gray-400"></i>
+                        <span data-host></span>
+                    </div>
+                    <div class="flex items-center">
+                         <i class="fas fa-users mr-2 text-gray-400"></i>
+                        <span data-spots></span> spots left
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
     <script>
-        // --- JAVASCRIPT TO FETCH DATA FROM YOUR API ---
+        const API_BASE_URL = 'https://local-vibe-api.onrender.com'; // This MUST be your Render URL
+        const workshopsList = document.getElementById('workshops-list');
+        const loadingMessage = document.getElementById('loading-message');
+        const template = document.getElementById('workshop-card-template');
 
-        // IMPORTANT: Replace this with your actual Render API URL
-        const API_URL = 'https://local-vibe-api.onrender.com/';
-
-        // Find the elements on the page we want to update
-        const messageElement = document.getElementById('api-message');
-        const statusCardElement = document.getElementById('api-status-card');
-
-        // Fetch the message from the API when the page loads
-        async function checkApiStatus() {
+        async function fetchAndDisplayWorkshops() {
             try {
-                const response = await fetch(API_URL);
-                if (!response.ok) {
-                    // Handle server errors (like 502, 500 etc.)
-                    throw new Error(`Server responded with status: ${response.status}`);
-                }
-                const data = await response.text();
+                const response = await fetch(`${API_BASE_URL}/api/workshops`);
+                if (!response.ok) throw new Error('Failed to fetch workshops.');
+                const workshops = await response.json();
+                
+                loadingMessage.remove();
 
-                // --- SUCCESS ---
-                messageElement.textContent = `"${data}"`;
-                messageElement.classList.remove('animate-pulse', 'text-gray-900');
-                messageElement.classList.add('text-green-600');
-                statusCardElement.classList.add('border-green-300');
+                if (workshops.length === 0) {
+                    workshopsList.innerHTML = '<p class="text-gray-500 col-span-full text-center">No workshops posted yet.</p>';
+                    return;
+                }
+
+                workshops.forEach(workshop => {
+                    const card = template.content.cloneNode(true);
+                    card.querySelector('[data-title]').textContent = workshop.title;
+                    card.querySelector('[data-location]').textContent = workshop.location;
+                    card.querySelector('[data-description]').textContent = workshop.description;
+                    card.querySelector('[data-host]').textContent = `Hosted by ${workshop.host}`;
+                    card.querySelector('[data-spots]').textContent = workshop.spots;
+                    card.querySelector('[data-price]').textContent = `₹${workshop.price}`;
+                    workshopsList.appendChild(card);
+                });
 
             } catch (error) {
-                // --- FAILURE ---
-                console.error('Failed to fetch from API:', error);
-                messageElement.textContent = 'Connection to server failed. Please check the logs.';
-                messageElement.classList.remove('animate-pulse', 'text-gray-900');
-                messageElement.classList.add('text-red-600');
-                statusCardElement.classList.add('border-red-300');
+                console.error('Error:', error);
+                loadingMessage.textContent = 'Could not load workshops. Please try refreshing.';
+                loadingMessage.classList.add('text-red-500');
             }
         }
-
-        // Run the function
-        checkApiStatus();
+        fetchAndDisplayWorkshops();
     </script>
 </body>
 </html>
+
 
