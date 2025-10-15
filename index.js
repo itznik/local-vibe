@@ -33,7 +33,7 @@ app.get('/api/workshops', async (req, res) => {
 
 
 // --- START THE SERVER ---
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`Server is running and listening on port ${PORT}`);
 });
